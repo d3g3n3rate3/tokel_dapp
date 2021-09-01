@@ -1,6 +1,8 @@
 // nspv settings
-export const TICKER = 'TOKEL';
-export const RPC_PORT = '29405';
+// export const TICKER = 'TOKEL';
+// export const RPC_PORT = '29405';
+export const TICKER = 'TKLTEST';
+export const RPC_PORT = '22025';
 
 export const TOPBAR_HEIGHT = 38;
 export const FEE = 0.0001;
@@ -8,6 +10,12 @@ export const FIAT_CURRENCY = 'USD';
 export const USD_VALUE = 5;
 export const IS_DEV = process.env.NODE_ENV === 'development';
 export const IS_PROD = process.env.NODE_ENV === 'production';
+
+export const TokenFilter = {
+  ALL: 'ALL',
+  NFT: 'NFTS',
+  FIXED_SUPPLY: 'FIXED SUPPLY',
+};
 
 export const WindowSize = {
   XL: 1440,

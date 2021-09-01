@@ -4,12 +4,13 @@ import { useSelector } from 'react-redux';
 import styled from '@emotion/styled';
 
 import { dispatch } from 'store/rematch';
-import { selectAccountAddress, selectKey } from 'store/selectors';
+import { selectAccountAddress, selectChosenToken, selectKey } from 'store/selectors';
 import { listTransactions, listUnspent, login } from 'util/nspvlib';
 import { getAllTransactionDetails } from 'util/transactions';
 
 import AssetView from './AssetView';
 import Portfolio from './Portfolio/Portfolio';
+import TokenView from './TokenView';
 
 const DashboardRoot = styled.div`
   display: flex;
@@ -27,6 +28,8 @@ const LOGIN_INTERVAL_MS = 11 * 60 * 1000;
 const Dashboard = (): ReactElement => {
   const key = useSelector(selectKey);
   const address = useSelector(selectAccountAddress);
+  const chosenToken = useSelector(selectChosenToken);
+
   useEffect(() => {
     const loginInterval = setInterval(() => login(key), LOGIN_INTERVAL_MS);
     const txInterval = setInterval(() => {
@@ -47,7 +50,7 @@ const Dashboard = (): ReactElement => {
   return (
     <DashboardRoot>
       <Portfolio />
-      <AssetView />
+      {chosenToken ? <TokenView /> : <AssetView />}
     </DashboardRoot>
   );
 };

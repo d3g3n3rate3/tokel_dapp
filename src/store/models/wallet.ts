@@ -1,12 +1,11 @@
 import { createModel } from '@rematch/core';
-import dotProp from 'dot-prop-immutable';
+import dp from 'dot-prop-immutable';
 import moment from 'moment';
 
 import { broadcast, spend } from 'util/nspvlib';
 import { spendSuccess } from 'util/transactionsHelper';
-import { FEE, TICKER } from 'vars/defines';
+import { FEE, TICKER, TokenFilter } from 'vars/defines';
 
-import account from './account';
 import type { RootModel } from './models';
 
 export type Asset = {
@@ -15,22 +14,28 @@ export type Asset = {
   balance?: number;
   usd_value?: number;
 };
-export interface WalletState {
+
+type SpendArgs = {
+  address: string;
+  amount: string;
+};
+
+export type TFI = typeof TokenFilter[keyof typeof TokenFilter];
+export type WalletState = {
   chosenAsset?: string;
   assets: Array<Asset>;
+  chosenToken?: string;
+  tokenBalances: Record<string, number>;
+  tokenFilterId: TFI;
+  tokenSearchTerm: string;
   currentTx: {
     id: string;
     status: number;
     error: string;
   };
-}
+};
 
-interface SpendArgs {
-  address: string;
-  amount: string;
-}
-
-const updateCurrTx = (state, key, value) => {
+const updateCurrTx = (state: WalletState, key: string, value: unknown) => {
   return {
     ...state,
     currentTx: {
@@ -42,32 +47,37 @@ const updateCurrTx = (state, key, value) => {
 
 export default createModel<RootModel>()({
   state: {
-    chosenAsset: null,
+    chosenAsset: TICKER,
     assets: [],
+    chosenToken: null,
+    tokenBalances: {},
+    tokenFilterId: TokenFilter.ALL,
+    tokenSearchTerm: '',
     currentTx: {
       id: '',
       status: 0,
     },
   } as WalletState,
   reducers: {
-    SET_CHOSEN_ASSET: (state, chosenAsset: string) => ({
+    // SET_CHOSEN_ASSET: (state, chosenAsset: string) => ({ ...state, chosenAsset }),
+    SET_ASSETS: (state, assets: Array<Asset>) => ({ ...state, assets }),
+    UPDATE_ASSET_BALANCE: (state, asset: Asset) => {
+      const indx = state.assets.findIndex(a => a.name === asset.name);
+      return dp.set(state, `assets.${indx}.balance`, v => v + asset.balance);
+    },
+    SET_CHOSEN_TOKEN: (state, chosenToken: string) => ({ ...state, chosenToken }),
+    SET_TOKEN_BALANCES: (state, tokenBalances: Record<string, number>) => ({
       ...state,
-      chosenAsset,
+      tokenBalances,
     }),
+    SET_TOKEN_FILTER_ID: (state, tokenFilterId: TFI) => ({ ...state, tokenFilterId }),
+    SET_TOKEN_SEARCH_TERM: (state, tokenSearchTerm: string) => ({ ...state, tokenSearchTerm }),
     SET_CURRENT_TX_ID: (state, txid: string) => updateCurrTx(state, 'id', txid),
     SET_CURRENT_TX_STATUS: (state, txstatus: number) => updateCurrTx(state, 'status', txstatus),
     SET_CURRENT_TX_ERROR: (state, error: string) => updateCurrTx(state, 'error', error),
-    SET_ASSETS: (state, assets: Array<Asset>) => ({
-      ...state,
-      assets,
-    }),
-    UPDATE_ASSET_BALANCE: (state, asset: Asset) => {
-      const indx = state.assets.findIndex(a => a.name === asset.name);
-      return dotProp.set(state, `assets.${indx}.balance`, v => v + asset.balance);
-    },
   },
   effects: dispatch => ({
-    async spend({ address, amount }: SpendArgs) {
+    async spend({ address, amount }: SpendArgs, state) {
       let newTx = null;
       this.SET_CURRENT_TX_ERROR(null);
       this.SET_CURRENT_TX_ID(null);
@@ -90,7 +100,7 @@ export default createModel<RootModel>()({
               dispatch.account.ADD_NEW_TX({
                 tx: newTx,
                 recipient: address,
-                from: [account.state.address],
+                from: [state.account.address],
                 time: moment().format('DD/MM/YYYY H:mm:ss'),
                 value,
                 unconfirmed: true,

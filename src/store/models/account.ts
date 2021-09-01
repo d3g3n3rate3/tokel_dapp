@@ -8,6 +8,7 @@ import {
   logout as nspvLogout,
 } from 'util/nspvlib';
 import { TxType, UnspentType } from 'util/nspvlib-mock';
+import { tokenAddress, tokenInfoTokel } from 'util/token-mock';
 import {
   getAllTransactionDetails,
   parseSerializedTransaction,
@@ -89,7 +90,6 @@ export default createModel<RootModel>()({
           if (setFeedback) {
             setFeedback('Logging in to nspv...');
           }
-
           const unspent = await listUnspent();
           this.SET_UNSPENT(unspent);
           dispatch.wallet.SET_ASSETS(parseUnspent(unspent));
@@ -97,9 +97,18 @@ export default createModel<RootModel>()({
             setFeedback('Getting transactions...');
           }
           const transactions = await listTransactions(account.address);
-          return getAllTransactionDetails(transactions.txids);
+          const txDetails = await getAllTransactionDetails(transactions.txids);
+          dispatch.account.SET_TXS(txDetails);
+          // get token balances
+          const tokenBalances = await tokenAddress(account.address);
+          dispatch.wallet.SET_TOKEN_BALANCES(tokenBalances.balances);
+          // get token detail
+          Object.keys(tokenBalances.balances).map(async tokenId => {
+            const detail = await tokenInfoTokel(tokenId);
+            dispatch.environment.SET_TOKEN_DETAIL(tokenId, detail);
+          });
+          return null;
         })
-        .then(txs => dispatch.account.SET_TXS(txs))
         .catch(e => {
           if (setFeedback) {
             setFeedback(null);
